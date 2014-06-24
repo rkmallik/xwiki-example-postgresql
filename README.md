@@ -14,7 +14,7 @@ Install the client tools on your machine if you have not already done so.
 
 Create the application.
 
-    rhc app create -a xwiki jbosseap-6 postgresql-9.2 --g large --from-code git://github.com/rkmallik/xwiki-example-postgresql
+    rhc app create -a xwiki jbosseap-6 postgresql-9.2 -g large --from-code git://github.com/rkmallik/xwiki-example-postgresql
 
 XWiki requires a little more than just the 1GB of disk storage. Unfortunately, the rhc app create command does not yet allow for you to create an app with additional storage out of the gate, so we have to do that manually. Vote for that feature here: https://www.openshift.com/content/create-a-gear-with-extra-storage
 
