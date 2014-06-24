@@ -1,0 +1,61 @@
+#!/bin/bash
+
+# To update the version shipped in this quickstart, bump this variable:
+#
+install_version="6.0.1"
+
+# Download and install XWiki
+
+install_dir=${OPENSHIFT_BUILD_DEPENDENCIES_DIR}${install_version}
+
+# Used in this script only
+current_version_dir=${OPENSHIFT_DATA_DIR}current
+
+#
+# If XWiki is already installed in the current gear, there
+# is nothing to build :-)
+#
+[ -d "${current_version_dir}" ] && exit 0
+
+mkdir -p $install_dir
+
+pushd ${install_dir} >/dev/null
+curl -s http://maven.xwiki.org/releases/org/xwiki/enterprise/xwiki-enterprise-web/${install_version}/xwiki-enterprise-web-${install_version}.war > xwiki.war
+
+# Verify the sources
+#
+tarball_md5=$(md5sum xwiki.war | cut -d ' ' -f 1)
+xwiki_md5=$(curl -s http://maven.xwiki.org/releases/org/xwiki/enterprise/xwiki-enterprise-web/${install_version}/xwiki-enterprise-web-${install_version}.war.md5)
+
+if [ "${tarball_md5}" != "${xwiki_md5}" ]; then
+  echo "ERROR: XWiki ${install_version} MD5 checksum mismatch."
+  exit 1;
+fi
+
+# explode war
+unzip xwiki.war -d xwiki
+
+# remove original
+rm -rf xwiki.war
+
+# add libs
+curl -s http://central.maven.org/maven2/com/google/inject/guice/3.0/guice-3.0.jar > xwiki/WEB-INF/lib/guice-3.0.jar
+curl -s http://central.maven.org/maven2/com/google/inject/extensions/guice-servlet/3.0/guice-servlet-3.0.jar > xwiki/WEB-INF/lib/guice-servlet-3.0.jar
+curl -s http://jdbc.postgresql.org/download/postgresql-9.3-1101.jdbc41.jar > xwiki/WEB-INF/lib/postgresql-9.3-1101.jdbc41.jar
+
+# remove existing hibernate config
+rm -f xwiki/WEB-INF/hibernate.cfg.xml
+
+# grab correct hibernate config
+curl -s https://gist.githubusercontent.com/rkmallik/7c7fc4b731898e33622f/raw/5dbd4eec95b87416b9f41e61ffb497ec5470326c/postgresql-hibernate.cfg.xml > xwiki/WEB-INF/hibernate.cfg.xml
+
+# repack war
+jar cfvM ROOT.war -C xwiki META-INF/ -C xwiki redirect -C xwiki resources/ -C xwiki skins/ -C xwiki templates/ -C xwiki WEB-INF
+
+# remove exploded files
+rm -rf xwiki/
+
+# move war to the right location
+mv ROOT.war ${OPENSHIFT_REPO_DIR}/deployments/ROOT.war
+
+popd >/dev/null
